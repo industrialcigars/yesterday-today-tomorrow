@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-inter);
+
+  /* "Broadcast" — white ground, high contrast, racing red accent. */
+  --color-paper: #ffffff;
+  --color-paper-raised: #ffffff;
+  --color-ink: #0a0a0a;
+  --color-ink-muted: #52525b;
+  --color-ink-faint: #8b8d94;
+  --color-accent: #e10600;
+  --color-accent-dark: #b80500;
+  --color-accent-soft: #fbe4e3;
+  --color-border: #dcdfe4;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}

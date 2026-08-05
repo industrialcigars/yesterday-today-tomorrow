@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  CONTRIBUTOR
+  ADMIN
+  FRIEND
+}
+
+enum PromptStatus {
+  ACTIVE
+  SUGGESTED
+  RETIRED
+}
+
+enum PromptOrigin {
+  CURATED
+  FAMILY
+  AI
+}
+
+enum EntrySource {
+  PROMPTED
+  MEMORY
+}
+
+enum EntryType {
+  TEXT
+  VIDEO
+  AUDIO
+  PHOTO
+}
+
+enum SealType {
+  OPEN
+  DATE
+  MANUAL
+  MILESTONE
+}
+
+enum MessageType {
+  VIDEO
+  AUDIO
+  TEXT
+}
+
+enum MessageStatus {
+  NEW
+  CONVERTED_TO_PROMPT
+  ARCHIVED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(CONTRIBUTOR)
+  createdAt DateTime @default(now())
+
+  entries           Entry[]
+  suggestedPrompts  Prompt[]           @relation("SuggestedPrompts")
+  recipientOf       Recipient[]
+  quotes            Quote[]
+  messagesSent      MessageToDad[]
+  notificationSched NotificationSchedule?
+  pushSubscriptions PushSubscription[]
+  comments          Comment[]
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Prompt {
+  id       String       @id @default(cuid())
+  category String
+  text     String
+  status   PromptStatus @default(ACTIVE)
+  origin   PromptOrigin @default(CURATED)
+
+  suggestedById   String?
+  suggestedBy     User?   @relation("SuggestedPrompts", fields: [suggestedById], references: [id])
+  sourceEntryId   String?
+  sourceEntry     Entry?  @relation("PromptSourceEntry", fields: [sourceEntryId], references: [id])
+
+  createdAt DateTime @default(now())
+  entries   Entry[]  @relation("PromptEntries")
+}
+
+model Entry {
+  id         String      @id @default(cuid())
+  authorId   String
+  author     User        @relation(fields: [authorId], references: [id])
+  promptId   String?
+  prompt     Prompt?     @relation("PromptEntries", fields: [promptId], references: [id])
+  source     EntrySource @default(MEMORY)
+  type       EntryType
+  content    String?
+  transcript String?
+  title      String?
+  summary    String?
+  createdAt  DateTime    @default(now())
+
+  media          Media[]
+  recipients     Recipient[]
+  sealRule       SealRule?
+  promptedByThis Prompt[]    @relation("PromptSourceEntry")
+  comments       Comment[]
+
+  @@index([createdAt])
+  @@index([authorId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  entryId   String
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  text      String?
+  createdAt DateTime @default(now())
+
+  media Media[]
+
+  @@index([entryId])
+}
+
+model Recipient {
+  id       String  @id @default(cuid())
+  entryId  String
+  entry    Entry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+  freeText String?
+
+  @@index([entryId])
+  @@index([userId])
+}
+
+model Media {
+  id         String   @id @default(cuid())
+  entryId    String
+  entry      Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  commentId  String?
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  storageKey String
+  type       String
+  duration   Int?
+  size       Int?
+  createdAt  DateTime @default(now())
+
+  @@index([entryId])
+  @@index([commentId])
+}
+
+model SealRule {
+  id                   String    @id @default(cuid())
+  entryId              String    @unique
+  entry                Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  type                 SealType  @default(OPEN)
+  unlockAt             DateTime?
+  milestoneDescription String?
+  unlockedAt           DateTime?
+}
+
+model NotificationSchedule {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  cadence          String   @default("weekly")
+  lastSent         DateTime?
+  escalationStage  Int      @default(0)
+}
+
+model MessageToDad {
+  id         String        @id @default(cuid())
+  fromUserId String
+  fromUser   User          @relation(fields: [fromUserId], references: [id])
+  type       MessageType
+  content    String?
+  status     MessageStatus @default(NEW)
+  createdAt  DateTime      @default(now())
+}
+
+model Quote {
+  id            String    @id @default(cuid())
+  text          String
+  context       String?
+  contributedById String?
+  contributedBy User?     @relation(fields: [contributedById], references: [id])
+  quotedAt      DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model MagicLinkToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
