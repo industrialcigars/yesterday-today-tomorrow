@@ -15,7 +15,7 @@ const FAMILY: { name: string; email: string; role: Role }[] = [
   { name: "Nathan", email: "TODO-nathan@example.com", role: Role.CONTRIBUTOR },
   { name: "Brandon", email: "brandon@industrialcigars.com", role: Role.ADMIN },
   { name: "Ale", email: "TODO-ale@example.com", role: Role.CONTRIBUTOR },
-  { name: "Jackie", email: "TODO-jackie@example.com", role: Role.CONTRIBUTOR },
+  { name: "Jacky", email: "TODO-jackie@example.com", role: Role.CONTRIBUTOR },
   { name: "Diana", email: "TODO-diana@example.com", role: Role.CONTRIBUTOR },
   { name: "Alessia", email: "TODO-alessia@example.com", role: Role.CONTRIBUTOR },
   { name: "Elias", email: "TODO-elias@example.com", role: Role.CONTRIBUTOR },
