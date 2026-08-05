@@ -7,8 +7,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { uploadMedia } from "@/lib/storage";
 import { transcribeMedia } from "@/lib/transcribe";
 import { generateTitleAndSummary, deriveFallbackTitle } from "@/lib/summarize";
-import { notifyFamilyOfNewEntry } from "@/lib/notify";
-import { EntrySource, EntryType, Role, SealType } from "@/app/generated/prisma/enums";
+import { notifyForEntry } from "@/lib/notify";
+import { EntrySource, EntryType, SealType } from "@/app/generated/prisma/enums";
 
 export async function createEntry(formData: FormData) {
   const user = await getCurrentUser();
@@ -90,10 +90,7 @@ export async function createEntry(formData: FormData) {
     },
   });
 
-  // The launch-day moment (brief §2): everyone gets notified the instant Dave posts.
-  if (user.role === Role.OWNER) {
-    await notifyFamilyOfNewEntry({ id: entry.id, title, authorId: user.id, authorName: user.name });
-  }
+  await notifyForEntry(entry.id);
 
   redirect("/timeline");
 }
