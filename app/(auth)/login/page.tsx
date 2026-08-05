@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { chooseIdentity } from "./actions";
 import { GuestEntry } from "@/components/GuestEntry";
 
-const QUICK_PICK_NAMES = ["Dave", "Beglije", "Brandon", "Andrew", "Nathan", "Ale"];
+const QUICK_PICK_NAMES = ["Dave", "Beglije", "Brandon", "Andrew", "Diana", "Nathan", "Jackie", "Ale"];
 
 const ERROR_COPY: Record<string, string> = {
   guest_empty: "Type a name first.",
