@@ -55,25 +55,35 @@ export async function createEntry(formData: FormData) {
     });
   }
 
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  const sharedStorageKey = (formData.get("sharedStorageKey") as string) || null;
   let transcript: string | null = null;
 
-  for (const file of files) {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-    const key = `entries/${entry.id}/${randomUUID()}.${ext}`;
-    const { storageKey } = await uploadMedia(key, buffer, file.type || "application/octet-stream");
+  if (sharedStorageKey) {
+    // Already uploaded by the share-target handler (Instagram/Facebook
+    // share-to-app flow) — just attach it, no transcript for this path.
+    const sharedMediaType = (formData.get("sharedMediaType") as string) || "application/octet-stream";
     await prisma.media.create({
-      data: {
-        entryId: entry.id,
-        storageKey,
-        type: file.type || "application/octet-stream",
-        size: file.size,
-      },
+      data: { entryId: entry.id, storageKey: sharedStorageKey, type: sharedMediaType },
     });
+  } else {
+    const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+    for (const file of files) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+      const key = `entries/${entry.id}/${randomUUID()}.${ext}`;
+      const { storageKey } = await uploadMedia(key, buffer, file.type || "application/octet-stream");
+      await prisma.media.create({
+        data: {
+          entryId: entry.id,
+          storageKey,
+          type: file.type || "application/octet-stream",
+          size: file.size,
+        },
+      });
 
-    if ((type === EntryType.VIDEO || type === EntryType.AUDIO) && !transcript) {
-      transcript = await transcribeMedia(buffer, file.name, file.type);
+      if ((type === EntryType.VIDEO || type === EntryType.AUDIO) && !transcript) {
+        transcript = await transcribeMedia(buffer, file.name, file.type);
+      }
     }
   }
 

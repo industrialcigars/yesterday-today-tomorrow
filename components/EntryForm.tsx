@@ -14,14 +14,19 @@ export function EntryForm({
   promptId,
   promptText,
   familyMembers = [],
+  sharedMedia,
+  initialCaption,
 }: {
   mode: "prompted" | "memory";
   promptId?: string;
   promptText?: string;
   familyMembers?: { id: string; name: string }[];
+  sharedMedia?: { url: string; storageKey: string; type: string };
+  initialCaption?: string;
 }) {
-  const [format, setFormat] = useState<Format>("text");
-  const [content, setContent] = useState("");
+  const sharedIsVideo = sharedMedia?.type.startsWith("video/") ?? false;
+  const [format, setFormat] = useState<Format>(sharedMedia ? (sharedIsVideo ? "video" : "photo") : "text");
+  const [content, setContent] = useState(initialCaption ?? "");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [audioUploadFile, setAudioUploadFile] = useState<File | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
@@ -104,13 +109,17 @@ export function EntryForm({
       formData.set("type", "TEXT");
       formData.set("content", content);
     } else if (format === "photo") {
-      if (photoFiles.length === 0) {
-        setError("Add at least one photo.");
-        return;
-      }
       formData.set("type", "PHOTO");
       formData.set("content", content);
-      photoFiles.forEach((f) => formData.append("files", f));
+      if (sharedMedia && !sharedIsVideo) {
+        formData.set("sharedStorageKey", sharedMedia.storageKey);
+        formData.set("sharedMediaType", sharedMedia.type);
+      } else if (photoFiles.length === 0) {
+        setError("Add at least one photo.");
+        return;
+      } else {
+        photoFiles.forEach((f) => formData.append("files", f));
+      }
     } else if (format === "audio-upload") {
       if (!audioUploadFile) {
         setError("Choose an audio file first.");
@@ -121,14 +130,18 @@ export function EntryForm({
       formData.append("files", audioUploadFile);
     } else {
       // video or audio-record
-      if (!recordedBlob) {
-        setError("Record something first.");
-        return;
-      }
       formData.set("type", format === "video" ? "VIDEO" : "AUDIO");
       formData.set("content", content);
-      const ext = recordedBlob.type.includes("mp4") ? "mp4" : "webm";
-      formData.append("files", new File([recordedBlob], `recording.${ext}`, { type: recordedBlob.type }));
+      if (sharedMedia && sharedIsVideo && format === "video") {
+        formData.set("sharedStorageKey", sharedMedia.storageKey);
+        formData.set("sharedMediaType", sharedMedia.type);
+      } else if (!recordedBlob) {
+        setError("Record something first.");
+        return;
+      } else {
+        const ext = recordedBlob.type.includes("mp4") ? "mp4" : "webm";
+        formData.append("files", new File([recordedBlob], `recording.${ext}`, { type: recordedBlob.type }));
+      }
     }
 
     if (recipientMode === "everyone") {
@@ -177,6 +190,12 @@ export function EntryForm({
         </div>
       )}
 
+      {sharedMedia && (
+        <p className="mb-4 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-dark">
+          Shared in from another app — add a caption and save it below.
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap gap-2">
         {(
           [
@@ -204,7 +223,14 @@ export function EntryForm({
         ))}
       </div>
 
-      {(format === "video" || format === "audio-record") && (
+      {format === "video" && sharedMedia && sharedIsVideo && (
+        <div className="mb-4 rounded-xl border border-accent-soft bg-accent-soft/30 p-3">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-accent-dark">Shared video</p>
+          <video controls className="w-full rounded-lg" src={sharedMedia.url} />
+        </div>
+      )}
+
+      {(format === "video" || format === "audio-record") && !(format === "video" && sharedMedia && sharedIsVideo) && (
         <div className="mb-4 rounded-xl border border-border bg-paper-raised p-4">
           {format === "video" && <video ref={videoPreviewRef} muted playsInline className="mb-3 w-full rounded-lg bg-black" />}
           {isRecording ? (
@@ -231,7 +257,15 @@ export function EntryForm({
         </div>
       )}
 
-      {format === "photo" && (
+      {format === "photo" && sharedMedia && !sharedIsVideo && (
+        <div className="mb-4 rounded-xl border border-accent-soft bg-accent-soft/30 p-3">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-accent-dark">Shared photo</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sharedMedia.url} alt="" className="w-full rounded-lg object-cover" />
+        </div>
+      )}
+
+      {format === "photo" && !(sharedMedia && !sharedIsVideo) && (
         <div className="mb-4">
           <input
             type="file"
