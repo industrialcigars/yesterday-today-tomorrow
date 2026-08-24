@@ -7,6 +7,7 @@ import { EntryType } from "@/app/generated/prisma/enums";
 import { CommentForm } from "@/components/CommentForm";
 import { DeleteEntryButton } from "@/components/DeleteEntryButton";
 import { SealedCard } from "@/components/SealedCard";
+import { VideoEmbed } from "@/components/VideoEmbed";
 import { isEntryUnlocked, canManageEntry, describeRecipients } from "@/lib/seal";
 import { unlockEntry } from "./actions";
 
@@ -100,6 +101,8 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ id
           entry.media.map((m) => (
             <audio key={m.id} controls className="mt-3 w-full" src={getMediaUrl(m.storageKey)} />
           ))}
+
+        {entry.type === EntryType.LINK && entry.externalUrl && <VideoEmbed url={entry.externalUrl} />}
 
         {entry.content && entry.type !== EntryType.TEXT && <p className="mt-3 text-ink">{entry.content}</p>}
 

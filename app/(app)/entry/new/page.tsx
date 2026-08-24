@@ -5,7 +5,11 @@ import { prisma } from "@/lib/db";
 import { EntryForm } from "@/components/EntryForm";
 import { Role } from "@/app/generated/prisma/enums";
 
-export default async function NewEntryPage() {
+export default async function NewEntryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ promptId?: string }>;
+}) {
   const user = await getCurrentUser();
 
   // The curated question bank is Dad's mechanism — everyone else contributes
@@ -14,8 +18,12 @@ export default async function NewEntryPage() {
     redirect("/memory");
   }
 
+  const { promptId } = await searchParams;
+
   const [prompt, familyMembers] = await Promise.all([
-    user ? getActivePromptForUser(user.id) : null,
+    // A specific promptId (from Review's "Answer now") always wins over the
+    // usual auto-picked one — that's the whole point of that shortcut.
+    promptId ? prisma.prompt.findUnique({ where: { id: promptId } }) : user ? getActivePromptForUser(user.id) : null,
     prisma.user.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 

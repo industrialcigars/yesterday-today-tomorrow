@@ -8,6 +8,7 @@ const FALLBACK_LABEL: Record<string, string> = {
   VIDEO: "A video memory",
   AUDIO: "An audio memory",
   PHOTO: "A photo memory",
+  LINK: "A shared video",
 };
 
 // Used whenever Claude isn't configured (no ANTHROPIC_API_KEY) or the call

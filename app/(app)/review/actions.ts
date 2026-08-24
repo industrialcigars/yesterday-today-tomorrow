@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { PromptStatus, Role } from "@/app/generated/prisma/enums";
@@ -16,6 +17,13 @@ export async function approvePrompt(promptId: string) {
   await assertReviewer();
   await prisma.prompt.update({ where: { id: promptId }, data: { status: PromptStatus.ACTIVE } });
   revalidatePath("/review");
+}
+
+export async function approveAndAnswerNow(promptId: string) {
+  await assertReviewer();
+  await prisma.prompt.update({ where: { id: promptId }, data: { status: PromptStatus.ACTIVE } });
+  revalidatePath("/review");
+  redirect(`/entry/new?promptId=${promptId}`);
 }
 
 export async function dismissPrompt(promptId: string) {

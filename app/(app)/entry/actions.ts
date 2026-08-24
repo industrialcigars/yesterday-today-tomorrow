@@ -18,6 +18,7 @@ export async function createEntry(formData: FormData) {
   const source = (formData.get("source") as string) === "PROMPTED" ? EntrySource.PROMPTED : EntrySource.MEMORY;
   const content = ((formData.get("content") as string) || "").trim() || null;
   const promptId = (formData.get("promptId") as string) || null;
+  const externalUrl = ((formData.get("externalUrl") as string) || "").trim() || null;
 
   if (!Object.values(EntryType).includes(type as EntryType)) {
     throw new Error("Invalid entry type");
@@ -29,6 +30,7 @@ export async function createEntry(formData: FormData) {
       type: type as EntryType,
       source,
       content,
+      externalUrl: type === EntryType.LINK ? externalUrl : null,
       promptId: promptId || undefined,
     },
   });

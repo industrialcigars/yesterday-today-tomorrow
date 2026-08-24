@@ -36,6 +36,7 @@ enum EntryType {
   VIDEO
   AUDIO
   PHOTO
+  LINK
 }
 
 enum SealType {
@@ -58,11 +59,12 @@ enum MessageStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      Role     @default(CONTRIBUTOR)
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  role          Role      @default(CONTRIBUTOR)
+  createdAt     DateTime  @default(now())
+  welcomeSeenAt DateTime?
 
   entries           Entry[]
   suggestedPrompts  Prompt[]           @relation("SuggestedPrompts")
@@ -111,6 +113,7 @@ model Entry {
   source     EntrySource @default(MEMORY)
   type       EntryType
   content    String?
+  externalUrl String?
   transcript String?
   title      String?
   summary    String?

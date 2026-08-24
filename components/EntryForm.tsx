@@ -3,10 +3,11 @@
 import { useRef, useState, useTransition } from "react";
 import { createEntry } from "@/app/(app)/entry/actions";
 import { NAMED_RECIPIENT_GROUPS } from "@/lib/seal";
+import { getVideoEmbedInfo } from "@/lib/videoEmbed";
 
 const MAX_RECORD_SECONDS = 600; // 10 min, per brief §4.2
 
-type Format = "text" | "video" | "audio-record" | "audio-upload" | "photo";
+type Format = "text" | "video" | "audio-record" | "audio-upload" | "photo" | "link";
 type SealChoice = "OPEN" | "DATE" | "MANUAL" | "MILESTONE";
 
 export function EntryForm({
@@ -29,6 +30,7 @@ export function EntryForm({
   const [content, setContent] = useState(initialCaption ?? "");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [audioUploadFile, setAudioUploadFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -128,6 +130,21 @@ export function EntryForm({
       formData.set("type", "AUDIO");
       formData.set("content", content);
       formData.append("files", audioUploadFile);
+    } else if (format === "link") {
+      if (!videoUrl.trim()) {
+        setError("Paste a YouTube or Facebook video link first.");
+        return;
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(videoUrl.trim());
+      } catch {
+        setError("That doesn't look like a valid link.");
+        return;
+      }
+      formData.set("type", "LINK");
+      formData.set("content", content);
+      formData.set("externalUrl", parsed.toString());
     } else {
       // video or audio-record
       formData.set("type", format === "video" ? "VIDEO" : "AUDIO");
@@ -204,6 +221,7 @@ export function EntryForm({
             ["audio-record", "Record audio"],
             ["audio-upload", "Upload audio"],
             ["photo", "Photo"],
+            ["link", "Add a Link"],
           ] as [Format, string][]
         ).map(([value, label]) => (
           <button
@@ -286,6 +304,28 @@ export function EntryForm({
             onChange={(e) => setAudioUploadFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-ink-muted"
           />
+        </div>
+      )}
+
+      {format === "link" && (
+        <div className="mb-4">
+          <input
+            type="url"
+            inputMode="url"
+            placeholder="Paste a YouTube or Facebook video link"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            className="w-full rounded-lg border border-border bg-paper-raised px-3 py-2.5 text-base text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-ink-faint">Old podcast episodes, family livestreams — anything already sitting on YouTube or Facebook.</p>
+          {videoUrl.trim() && (() => {
+            const { embedUrl } = getVideoEmbedInfo(videoUrl.trim());
+            return embedUrl ? (
+              <div className="relative mt-3 w-full overflow-hidden rounded-lg bg-black pt-[56.25%]">
+                <iframe src={embedUrl} className="absolute inset-0 h-full w-full" allowFullScreen />
+              </div>
+            ) : null;
+          })()}
         </div>
       )}
 

@@ -12,6 +12,14 @@ export default async function WelcomePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  if (!user.welcomeSeenAt) {
+    // Marked (and awaited) the instant this renders, not only on completion,
+    // so a killed/relaunched PWA never replays the intro. Un-awaited writes
+    // aren't guaranteed to finish once the response is sent, so this can't
+    // be fire-and-forget.
+    await prisma.user.update({ where: { id: user.id }, data: { welcomeSeenAt: new Date() } });
+  }
+
   if (user.role !== Role.OWNER) {
     return <FamilyWelcomeFlow userName={user.name} />;
   }

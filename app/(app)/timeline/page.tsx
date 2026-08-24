@@ -221,6 +221,16 @@ export default async function TimelinePage({
                 </p>
               )}
 
+              {entry.type === EntryType.LINK && (
+                <p className="mt-3 flex items-center gap-1.5 text-sm text-ink-muted">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <path d="M15 3h6v6M10 14 21 3" />
+                  </svg>
+                  Linked video — tap to watch
+                </p>
+              )}
+
               {entry.content && entry.type !== EntryType.TEXT && (
                 <p className="mt-3 line-clamp-2 text-ink">{entry.content}</p>
               )}

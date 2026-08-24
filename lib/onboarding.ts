@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/db";
 
-// Everyone's welcome sequence plays until they've actually posted something —
-// no separate flag needed, "have they ever written an entry" is the source
-// of truth and self-heals if they close the tab mid-sequence. Dave gets the
-// launch-day version; everyone else gets the generic family-archive intro
-// (see app/welcome/page.tsx).
-export async function needsWelcome(user: { id: string }): Promise<boolean> {
-  const count = await prisma.entry.count({ where: { authorId: user.id } });
-  return count === 0;
+// The welcome sequence plays exactly once per account, tracked by
+// User.welcomeSeenAt (set the moment /welcome first renders — see
+// app/welcome/page.tsx). It intentionally does NOT depend on whether they
+// ever finish answering the first prompt: installed PWAs get killed and
+// relaunched constantly (especially on iOS), and start_url re-checks this on
+// every launch — gating on "posted an entry" made the whole intro replay
+// from step 1 every single time the app reopened before someone finished it.
+export async function needsWelcome(user: { welcomeSeenAt?: Date | null }): Promise<boolean> {
+  return !user.welcomeSeenAt;
 }
