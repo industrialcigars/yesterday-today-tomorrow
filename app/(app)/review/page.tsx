@@ -35,16 +35,14 @@ export default async function ReviewPage() {
                 {p.category} · suggested by {p.suggestedBy?.name ?? "a family member"}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {user.role === Role.OWNER && (
-                  <form action={approveAndAnswerNow.bind(null, p.id)}>
-                    <button
-                      type="submit"
-                      className="rounded-full bg-accent-dark px-4 py-1.5 text-sm font-medium text-paper-raised transition hover:bg-ink"
-                    >
-                      Answer now →
-                    </button>
-                  </form>
-                )}
+                <form action={approveAndAnswerNow.bind(null, p.id)}>
+                  <button
+                    type="submit"
+                    className="rounded-full bg-accent-dark px-4 py-1.5 text-sm font-medium text-paper-raised transition hover:bg-ink"
+                  >
+                    Answer now →
+                  </button>
+                </form>
                 <form action={approvePrompt.bind(null, p.id)}>
                   <button
                     type="submit"

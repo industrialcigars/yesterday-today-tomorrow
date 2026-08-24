@@ -11,14 +11,16 @@ export default async function NewEntryPage({
   searchParams: Promise<{ promptId?: string }>;
 }) {
   const user = await getCurrentUser();
+  const { promptId } = await searchParams;
 
   // The curated question bank is Dad's mechanism — everyone else contributes
   // their own entries via Log a Memory instead (see brief §3 roles table).
-  if (user && user.role !== Role.OWNER) {
+  // Exception: a specific promptId means someone with review access used
+  // Review's "Answer now" shortcut on a family-submitted question — that's a
+  // deliberate action, not the usual curated rotation, so let it through.
+  if (user && user.role !== Role.OWNER && !promptId) {
     redirect("/memory");
   }
-
-  const { promptId } = await searchParams;
 
   const [prompt, familyMembers] = await Promise.all([
     // A specific promptId (from Review's "Answer now") always wins over the
