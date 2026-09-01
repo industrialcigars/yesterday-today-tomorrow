@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { createEntry } from "@/app/(app)/entry/actions";
 import { NAMED_RECIPIENT_GROUPS } from "@/lib/seal";
 import { getVideoEmbedInfo } from "@/lib/videoEmbed";
+import { compressImageIfNeeded } from "@/lib/compressImage";
 
 const MAX_RECORD_SECONDS = 600; // 10 min, per brief §4.2
 
@@ -29,6 +30,7 @@ export function EntryForm({
   const [format, setFormat] = useState<Format>(sharedMedia ? (sharedIsVideo ? "video" : "photo") : "text");
   const [content, setContent] = useState(initialCaption ?? "");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [compressingPhotos, setCompressingPhotos] = useState(false);
   const [audioUploadFile, setAudioUploadFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
@@ -289,10 +291,22 @@ export function EntryForm({
             type="file"
             accept="image/*"
             multiple
-            onChange={(e) => setPhotoFiles(Array.from(e.target.files ?? []))}
+            onChange={async (e) => {
+              const picked = Array.from(e.target.files ?? []);
+              setCompressingPhotos(true);
+              try {
+                const processed = await Promise.all(picked.map((f) => compressImageIfNeeded(f)));
+                setPhotoFiles(processed);
+              } finally {
+                setCompressingPhotos(false);
+              }
+            }}
             className="block w-full text-sm text-ink-muted"
           />
-          {photoFiles.length > 0 && <p className="mt-1 text-sm text-ink-muted">{photoFiles.length} photo(s) selected</p>}
+          {compressingPhotos && <p className="mt-1 text-sm text-ink-muted">Preparing photo(s)…</p>}
+          {!compressingPhotos && photoFiles.length > 0 && (
+            <p className="mt-1 text-sm text-ink-muted">{photoFiles.length} photo(s) selected</p>
+          )}
         </div>
       )}
 
@@ -443,10 +457,10 @@ export function EntryForm({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={pending}
+        disabled={pending || compressingPhotos}
         className="mt-4 w-full rounded-lg bg-ink px-4 py-3 text-base font-medium text-paper-raised transition hover:bg-accent-dark disabled:opacity-50"
       >
-        {pending ? "Saving…" : "Save entry"}
+        {pending ? "Saving…" : compressingPhotos ? "Preparing…" : "Save entry"}
       </button>
     </div>
   );

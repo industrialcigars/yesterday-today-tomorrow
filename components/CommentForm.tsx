@@ -2,12 +2,28 @@
 
 import { useRef, useState, useTransition } from "react";
 import { addComment } from "@/app/(app)/entry/[id]/actions";
+import { compressImageIfNeeded } from "@/lib/compressImage";
 
 export function CommentForm({ entryId }: { entryId: string }) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const [pending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0] ?? null;
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    setPreparing(true);
+    try {
+      setFile(await compressImageIfNeeded(picked));
+    } finally {
+      setPreparing(false);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,18 +55,18 @@ export function CommentForm({ entryId }: { entryId: string }) {
             <circle cx="8.5" cy="8.5" r="1.5" />
             <path d="m21 15-5-5L5 21" />
           </svg>
-          {file ? file.name : "Add a photo or video"}
+          {preparing ? "Preparing…" : file ? file.name : "Add a photo or video"}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*,video/*"
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={handleFileChange}
           />
         </label>
         <button
           type="submit"
-          disabled={pending || (!text.trim() && !file)}
+          disabled={pending || preparing || (!text.trim() && !file)}
           className="rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-paper-raised transition hover:bg-accent-dark disabled:opacity-40"
         >
           {pending ? "Adding…" : "Add"}
