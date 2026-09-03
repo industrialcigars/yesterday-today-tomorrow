@@ -1,12 +1,32 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { unstable_rethrow } from "next/navigation";
 import { createEntry } from "@/app/(app)/entry/actions";
 import { NAMED_RECIPIENT_GROUPS } from "@/lib/seal";
 import { getVideoEmbedInfo } from "@/lib/videoEmbed";
 import { compressImageIfNeeded } from "@/lib/compressImage";
 
 const MAX_RECORD_SECONDS = 600; // 10 min, per brief §4.2
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function submitEntry(formData: FormData, onError: (message: string) => void, attempt = 1): Promise<void> {
+  try {
+    await createEntry(formData);
+  } catch (err) {
+    unstable_rethrow(err); // let the on-success redirect through untouched
+    // A dropped/flaky connection often just works on a second try — retry
+    // once quietly before bothering the user with an error.
+    if (attempt < 2) {
+      await sleep(1200);
+      return submitEntry(formData, onError, attempt + 1);
+    }
+    onError("Couldn't save that — check your connection and try again. Nothing was lost.");
+  }
+}
 
 type Format = "text" | "video" | "audio-record" | "audio-upload" | "photo" | "link";
 type SealChoice = "OPEN" | "DATE" | "MANUAL" | "MILESTONE";
@@ -189,9 +209,7 @@ export function EntryForm({
       formData.set("milestoneDescription", milestoneDescription.trim());
     }
 
-    startTransition(() => {
-      createEntry(formData);
-    });
+    startTransition(() => submitEntry(formData, setError));
   }
 
   return (
@@ -460,7 +478,7 @@ export function EntryForm({
         disabled={pending || compressingPhotos}
         className="mt-4 w-full rounded-lg bg-ink px-4 py-3 text-base font-medium text-paper-raised transition hover:bg-accent-dark disabled:opacity-50"
       >
-        {pending ? "Saving…" : compressingPhotos ? "Preparing…" : "Save entry"}
+        {pending ? "Saving…" : compressingPhotos ? "Preparing…" : error ? "Try again" : "Save entry"}
       </button>
     </div>
   );

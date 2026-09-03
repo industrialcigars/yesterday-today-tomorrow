@@ -1,13 +1,19 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { unstable_rethrow } from "next/navigation";
 import { addComment } from "@/app/(app)/entry/[id]/actions";
 import { compressImageIfNeeded } from "@/lib/compressImage";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function CommentForm({ entryId }: { entryId: string }) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [preparing, setPreparing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,18 +35,33 @@ export function CommentForm({ entryId }: { entryId: string }) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() && files.length === 0) return;
-    const formData = new FormData();
-    formData.set("text", text);
-    files.forEach((f) => formData.append("files", f));
-    startTransition(async () => {
+  async function submit(formData: FormData, attempt = 1) {
+    try {
       await addComment(entryId, formData);
       setText("");
       setFiles([]);
+      setError(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    });
+    } catch (err) {
+      unstable_rethrow(err);
+      // A dropped/flaky connection often just works on a second try — retry
+      // once quietly before bothering the user with an error.
+      if (attempt < 2) {
+        await sleep(1200);
+        return submit(formData, attempt + 1);
+      }
+      setError("Couldn't send that — check your connection and try again. Nothing was lost.");
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim() && files.length === 0) return;
+    setError(null);
+    const formData = new FormData();
+    formData.set("text", text);
+    files.forEach((f) => formData.append("files", f));
+    startTransition(() => submit(formData));
   }
 
   return (
@@ -71,6 +92,10 @@ export function CommentForm({ entryId }: { entryId: string }) {
         </ul>
       )}
 
+      {error && (
+        <p className="mt-2 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-dark">{error}</p>
+      )}
+
       <div className="mt-2 flex items-center justify-between">
         <label className="flex cursor-pointer items-center gap-1.5 text-sm text-ink-muted hover:text-accent-dark">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -93,7 +118,7 @@ export function CommentForm({ entryId }: { entryId: string }) {
           disabled={pending || preparing || (!text.trim() && files.length === 0)}
           className="rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-paper-raised transition hover:bg-accent-dark disabled:opacity-40"
         >
-          {pending ? "Adding…" : "Add"}
+          {pending ? "Adding…" : error ? "Try again" : "Add"}
         </button>
       </div>
     </form>
