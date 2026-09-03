@@ -84,16 +84,17 @@ export async function addComment(entryId: string, formData: FormData) {
   if (!user) return;
 
   const text = ((formData.get("text") as string) || "").trim() || null;
-  const file = formData.get("file");
-  const hasFile = file instanceof File && file.size > 0;
+  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
 
-  if (!text && !hasFile) return;
+  if (!text && files.length === 0) return;
 
   const comment = await prisma.comment.create({
     data: { entryId, authorId: user.id, text },
   });
 
-  if (hasFile && file instanceof File) {
+  let transcript: string | null = null;
+
+  for (const file of files) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
     const key = `entries/${entryId}/comments/${comment.id}/${randomUUID()}.${ext}`;
@@ -109,12 +110,13 @@ export async function addComment(entryId: string, formData: FormData) {
       },
     });
 
-    if (file.type.startsWith("video/") || file.type.startsWith("audio/")) {
-      const transcript = await transcribeMedia(buffer, file.name, file.type);
-      if (transcript) {
-        await prisma.comment.update({ where: { id: comment.id }, data: { text: text ?? transcript } });
-      }
+    if (!transcript && (file.type.startsWith("video/") || file.type.startsWith("audio/"))) {
+      transcript = await transcribeMedia(buffer, file.name, file.type);
     }
+  }
+
+  if (transcript) {
+    await prisma.comment.update({ where: { id: comment.id }, data: { text: text ?? transcript } });
   }
 
   revalidatePath(`/entry/${entryId}`);
