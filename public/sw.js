@@ -9,7 +9,15 @@ self.addEventListener("activate", (event) => {
 });
 
 // Minimal network-passthrough fetch handler — required by browsers for install-prompt eligibility.
+// Only intercept GET: Safari's service worker implementation is unreliable at
+// re-streaming POST/PUT bodies through event.respondWith(fetch(event.request)),
+// and can silently truncate large multipart uploads — exactly the "Unexpected
+// end of form" failures seen on real iOS devices but never reproducible from
+// a desktop browser (which isn't PWA-installed with an active controlling
+// worker the same way). Uploads have no business being intercepted anyway —
+// let the browser handle them natively.
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
   event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });
 
